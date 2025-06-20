@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  ollama-service:
+    build:
+      context: ./ollama-service
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    container_name: ollama_rag_app
+
+  chromadb-service:
+    build:
+      context: ./chromadb-service
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma_data
+    restart: unless-stopped
+    container_name: chromadb_rag_app
+
+  nextjs-app:
+    build:
+      context: ./nextjs-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ollama-service
+      - chromadb-service
+    environment:
+      OLLAMA_API_BASE_URL: http://ollama-service:11434
+      CHROMADB_API_BASE_URL: http://chromadb-service:8000
+      # For Next.js development, ensure HMR works correctly
+      WATCHPACK_POLLING: 'true'
+    volumes:
+      - ./nextjs-app:/usr/src/app # Map source code for hot reloading
+      - /usr/src/app/node_modules # Isolate node_modules in container
+      - /usr/src/app/.next # Isolate .next build folder in container
+    restart: unless-stopped
+    container_name: nextjs_rag_app
+
+volumes:
+  ollama_data:
+  chroma_data:
